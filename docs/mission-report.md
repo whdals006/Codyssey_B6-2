@@ -273,3 +273,67 @@ python3 -c "from app.gemini_service import DEFAULT_MODEL; print(DEFAULT_MODEL)"
     ```
 
     에서 오류가 발생할 수 있기 때문에 별도로 처리한다.
+
+## 4. Commit / PR 프롬프트 설계
+
+### Commit 프롬프트 설계
+
+* AI한테 전달하는 내용
+
+    ```
+    COMMON_INSTRUCTIONS
+    git status
+    git diff
+    작성 규칙
+    ```
+
+* COMMON_INSTRUCTIONS
+
+    : Commit 과 PR 프롬프트에 공동으로 사용되는 Instruction.
+
+* `git status` 와 `git diff`를 전달하는 이유
+
+    - `git status` : 변경된 파일의 상태를 알 수 있다.
+    - `git diff` : 실제 어떤 코드가 변경됬는지 알 수 있다.
+
+* Commit 작성 규칙
+
+    * Commit 제목 규칙
+
+        ```
+        1. 첫 번째 줄은 커밋 제목이다.
+        2. 커밋 제목은 50자 이내를 권장하며 최대 72자로 작성한다.
+        3. 제목은 feat, fix, docs, refactor 등 변경 성격이 드러나도록 작성한다.
+        ```
+
+    * Commit 본문 규칙
+
+        ```
+        4. 본문을 작성한다면 핵심 변경 내용을 1~2개의 불릿으로 작성한다.
+        5. 본문에는 변경된 파일 또는 모듈을 1~3개 언급한다.
+        ```
+
+* AI한테 전달되는 Commit 프롬프트 확인
+
+```python
+python3 -c "from app.prompt import build_commit_prompt; print(build_commit_prompt(' M main.py', 'diff --git a/main.py b/main.py\n+print(\"hello\")'))"
+```
+
+### PR 프롬프트 설계
+
+* AI한테 전달하는 내용
+
+    ```
+    COMMON_INSTRUCTIONS
+    현재 브랜치
+    git status
+    git diff
+    PR 템플릿 구조
+    작성 규칙
+    ```
+
+* AI한테 전달되는 PR 프롬프트 확인
+
+```python
+python3 -c "from app.prompt import build_pr_prompt; print(build_pr_prompt(' M main.py', 'diff --git a/main.py b/main.py\n+print(\"hello\")', 'feature/test'))"
+```
