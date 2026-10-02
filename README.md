@@ -19,4 +19,44 @@ B6-2/
 └── .gitignore
 ```
 
-##
+## 사용방법
+
+* AI API Key 환경변수로 등록 (1회용)
+
+```bash
+export GEMINI_API_KEY="본인의_API_KEY"
+```
+
+* 도움말 출력
+
+```bash
+python3 main.py --help
+```
+
+```bash
+python3 main.py commit --help
+```
+
+* `commit` 메세지 출력
+
+```bash
+python3 main.py commit
+```
+
+* Gemini AI 모델 변경 (default: gemini-3.5-flash-lite)
+
+```bash
+python3 main.py commit --model gemini-3.5-flash-lite
+```
+
+* `--temperature` 수치 변경 (default:)(범위: 0.0~2.0)
+
+```bash
+python3 main.py commit --temperature 0.5
+```
+
+* `--max-tokens` 수치 변경 (default: )
+
+```bash
+python3 main.py commit --max-tokens 500
+```
