@@ -14,7 +14,10 @@ from app.git_service import (
     collect_git_changes,
     ensure_project_root,
 )
-from app.prompt import build_commit_prompt
+from app.prompt import (
+    build_commit_prompt,
+    build_pr_prompt,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -32,25 +35,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="커밋 메시지를 생성합니다.",
     )
 
-    commit_parser.add_argument(
-        "--model",
-        default=DEFAULT_MODEL,
-        help=f"Gemini 모델 (기본값: {DEFAULT_MODEL})",
+    pr_parser = subparsers.add_parser(
+        "pr",
+        help="PR 제목과 본문을 생성합니다.",
     )
 
-    commit_parser.add_argument(
-        "--temperature",
-        type=float,
-        default=DEFAULT_TEMPERATURE,
-        help=f"temperature (기본값: {DEFAULT_TEMPERATURE})",
-    )
+    for command_parser in (commit_parser, pr_parser):
+        command_parser.add_argument(
+            "--model",
+            default=DEFAULT_MODEL,
+            help=f"Gemini 모델 (기본값: {DEFAULT_MODEL})",
+        )
 
-    commit_parser.add_argument(
-        "--max-tokens",
-        type=int,
-        default=DEFAULT_MAX_TOKENS,
-        help=f"최대 출력 토큰 수 (기본값: {DEFAULT_MAX_TOKENS})",
-    )
+        command_parser.add_argument(
+            "--temperature",
+            type=float,
+            default=DEFAULT_TEMPERATURE,
+            help=f"temperature (기본값: {DEFAULT_TEMPERATURE})",
+        )
+
+        command_parser.add_argument(
+            "--max-tokens",
+            type=int,
+            default=DEFAULT_MAX_TOKENS,
+            help=f"최대 출력 토큰 수 (기본값: {DEFAULT_MAX_TOKENS})",
+        )
 
     return parser
 
@@ -112,6 +121,49 @@ def run_commit(args: argparse.Namespace) -> None:
     print("----------------------")
 
 
+def run_pr(args: argparse.Namespace) -> None:
+    changes = collect_git_changes()
+
+    if not changes.changed:
+        print(
+            "[INFO] 변경 사항이 없습니다. "
+            "PR 초안을 생성하지 않고 종료합니다."
+        )
+        return
+
+    print_git_info(
+        changes.status,
+        changes.diff,
+    )
+
+    print(
+        f"[INFO] 현재 브랜치: {changes.branch}"
+    )
+
+    prompt = build_pr_prompt(
+        changes.status,
+        changes.diff,
+        changes.branch,
+    )
+
+    print("[INFO] AI API 요청 중...")
+
+    result = generate_text(
+        prompt=prompt,
+        model=args.model,
+        temperature=args.temperature,
+        max_tokens=args.max_tokens,
+    )
+
+    print("[INFO] AI API 요청 횟수: 1회")
+
+    print("[DONE] PR 초안 생성 완료")
+    print()
+    print("--- PR Draft ---")
+    print(result)
+    print("----------------")
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
@@ -131,6 +183,9 @@ def main() -> None:
 
         if args.command == "commit":
             run_commit(args)
+
+        elif args.command == "pr":
+            run_pr(args)
 
     except GitError as exc:
         print(f"[ERROR] Git 오류: {exc}")

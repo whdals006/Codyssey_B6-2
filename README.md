@@ -37,10 +37,18 @@ python3 main.py --help
 python3 main.py commit --help
 ```
 
-* `commit` 메세지 출력
+```bash
+python3 main.py pr --help
+```
+
+* `commit` 메세지 / `pr` 제목 + 본문 생성
 
 ```bash
 python3 main.py commit
+```
+
+```bash
+python3 main.py pr
 ```
 
 * Gemini AI 모델 변경 (default: gemini-3.5-flash-lite)
@@ -60,3 +68,5 @@ python3 main.py commit --temperature 0.5
 ```bash
 python3 main.py commit --max-tokens 500
 ```
+
+
