@@ -337,3 +337,24 @@ python3 -c "from app.prompt import build_commit_prompt; print(build_commit_promp
 ```python
 python3 -c "from app.prompt import build_pr_prompt; print(build_pr_prompt(' M main.py', 'diff --git a/main.py b/main.py\n+print(\"hello\")', 'feature/test'))"
 ```
+
+## 5. cli.py 에 commit 기능 추가
+
+
+## 6. cli.py 에 pr 기능 추가
+
+
+## 7. 출력 형식 검증
+
+이번 단계에서 추가되는 기능
+
+```
+1. Commit 결과 검증
+2. PR 결과 검증
+```
+
+
+## 8. Safe Mode
+
+
+## 9. cli.py 에 옵션 통합
