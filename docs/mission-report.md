@@ -356,5 +356,30 @@ python3 -c "from app.prompt import build_pr_prompt; print(build_pr_prompt(' M ma
 
 ## 8. Safe Mode
 
+### Safe Mode의 정책
+
+```
+┌────────────────────────────┐
+│ Safe Mode                  │
+├────────────────────────────┤
+│ 최대 diff 파일: 10개         │
+│ 최대 diff 줄: 200줄          │
+│ API Key 마스킹              │
+│ token/secret/password 마스킹│
+│ 이메일 마스킹                │
+└────────────────────────────┘
+```
+
+* 왜 Safe Mode를 사용하는가?
+
+    `git diff`에는 실수로 
+
+    ```
+    API Key
+    비밀번호
+    이메일
+    ```
+
+    같이 민감한 정보가 그대로 Gemini에 보내지게 될 수 있으므로 Safe Mode를 켜서 마스킹 처리를 한다.
 
 ## 9. cli.py 에 옵션 통합

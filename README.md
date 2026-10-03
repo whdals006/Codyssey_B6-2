@@ -69,4 +69,12 @@ python3 main.py commit --temperature 0.5
 python3 main.py commit --max-tokens 500
 ```
 
+* `safe mode`
 
+```bash
+python3 main.py commit --safe-mode
+```
+
+```bash
+python3 main.py pr --safe-mode
+```
