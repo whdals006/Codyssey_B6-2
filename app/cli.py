@@ -2,6 +2,12 @@ from __future__ import annotations
 
 import argparse
 
+from app.formatter import (
+    normalize_commit,
+    normalize_pr,
+    validate_commit,
+    validate_pr,
+)
 from app.gemini_service import (
     DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL,
@@ -18,6 +24,7 @@ from app.prompt import (
     build_commit_prompt,
     build_pr_prompt,
 )
+from app.security import prepare_context
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -40,50 +47,76 @@ def build_parser() -> argparse.ArgumentParser:
         help="PR 제목과 본문을 생성합니다.",
     )
 
-    for command_parser in (commit_parser, pr_parser):
+    for command_parser in (
+        commit_parser,
+        pr_parser,
+    ):
         command_parser.add_argument(
             "--model",
             default=DEFAULT_MODEL,
-            help=f"Gemini 모델 (기본값: {DEFAULT_MODEL})",
+            help=(
+                "Gemini 모델 "
+                f"(기본값: {DEFAULT_MODEL})"
+            ),
         )
 
         command_parser.add_argument(
             "--temperature",
             type=float,
             default=DEFAULT_TEMPERATURE,
-            help=f"temperature (기본값: {DEFAULT_TEMPERATURE})",
+            help=(
+                "temperature "
+                f"(기본값: {DEFAULT_TEMPERATURE})"
+            ),
         )
 
         command_parser.add_argument(
             "--max-tokens",
             type=int,
             default=DEFAULT_MAX_TOKENS,
-            help=f"최대 출력 토큰 수 (기본값: {DEFAULT_MAX_TOKENS})",
+            help=(
+                "최대 출력 토큰 수 "
+                f"(기본값: {DEFAULT_MAX_TOKENS})"
+            ),
+        )
+
+        command_parser.add_argument(
+            "--safe-mode",
+            action="store_true",
+            help="민감정보 마스킹 및 diff 크기 제한",
         )
 
     return parser
 
 
-def print_git_info(status: str, diff: str) -> None:
+def print_git_info(
+    status: str,
+    diff: str,
+) -> None:
     status_files = [
-        line for line in status.splitlines()
+        line
+        for line in status.splitlines()
         if line.strip()
     ]
 
-    diff_lines = len(diff.splitlines())
+    diff_lines = len(
+        diff.splitlines()
+    )
 
     print(
-        f"[INFO] Git status 수집 완료: "
+        "[INFO] Git status 수집 완료: "
         f"{len(status_files)}개 상태 항목"
     )
 
     print(
-        f"[INFO] Git diff 수집 완료: "
+        "[INFO] Git diff 수집 완료: "
         f"{diff_lines}줄"
     )
 
 
-def run_commit(args: argparse.Namespace) -> None:
+def run_commit(
+    args: argparse.Namespace,
+) -> None:
     changes = collect_git_changes()
 
     if not changes.changed:
@@ -98,9 +131,18 @@ def run_commit(args: argparse.Namespace) -> None:
         changes.diff,
     )
 
-    prompt = build_commit_prompt(
+    status, diff = prepare_context(
         changes.status,
         changes.diff,
+        args.safe_mode,
+    )
+
+    if args.safe_mode:
+        print("[INFO] Safe Mode 활성화")
+
+    prompt = build_commit_prompt(
+        status,
+        diff,
     )
 
     print("[INFO] AI API 요청 중...")
@@ -112,16 +154,37 @@ def run_commit(args: argparse.Namespace) -> None:
         max_tokens=args.max_tokens,
     )
 
-    print("[INFO] AI API 요청 횟수: 1회")
+    print(
+        "[INFO] AI API 요청 횟수: 1회"
+    )
 
-    print("[DONE] 커밋 메시지 생성 완료")
+    final_result = normalize_commit(
+        result,
+        changes.status,
+        changes.diff,
+    )
+
+    if not validate_commit(
+        final_result
+    ):
+        raise ValueError(
+            "생성된 커밋 메시지가 "
+            "형식 검증에 실패했습니다."
+        )
+
+    print(
+        "[DONE] 커밋 메시지 생성 완료"
+    )
+
     print()
     print("--- Commit Message ---")
-    print(result)
+    print(final_result)
     print("----------------------")
 
 
-def run_pr(args: argparse.Namespace) -> None:
+def run_pr(
+    args: argparse.Namespace,
+) -> None:
     changes = collect_git_changes()
 
     if not changes.changed:
@@ -137,12 +200,22 @@ def run_pr(args: argparse.Namespace) -> None:
     )
 
     print(
-        f"[INFO] 현재 브랜치: {changes.branch}"
+        f"[INFO] 현재 브랜치: "
+        f"{changes.branch}"
     )
 
-    prompt = build_pr_prompt(
+    status, diff = prepare_context(
         changes.status,
         changes.diff,
+        args.safe_mode,
+    )
+
+    if args.safe_mode:
+        print("[INFO] Safe Mode 활성화")
+
+    prompt = build_pr_prompt(
+        status,
+        diff,
         changes.branch,
     )
 
@@ -155,12 +228,44 @@ def run_pr(args: argparse.Namespace) -> None:
         max_tokens=args.max_tokens,
     )
 
-    print("[INFO] AI API 요청 횟수: 1회")
+    print(
+        "[INFO] AI API 요청 횟수: 1회"
+    )
 
-    print("[DONE] PR 초안 생성 완료")
+    final_result = normalize_pr(
+        result,
+        changes.status,
+        changes.diff,
+    )
+
+    if not validate_pr(
+        final_result
+    ):
+        raise ValueError(
+            "생성된 PR 초안이 "
+            "형식 검증에 실패했습니다."
+        )
+
+    lines = final_result.splitlines()
+
+    title = lines[0]
+
+    body = "\n".join(
+        lines[2:]
+    ).strip()
+
+    print(
+        "[DONE] PR 초안 생성 완료"
+    )
+
     print()
-    print("--- PR Draft ---")
-    print(result)
+    print("--- PR Title ---")
+    print(title)
+
+    print()
+    print("--- PR Body ---")
+    print(body)
+
     print("----------------")
 
 
@@ -173,12 +278,14 @@ def main() -> None:
 
         if not 0.0 <= args.temperature <= 2.0:
             parser.error(
-                "--temperature는 0.0~2.0 범위여야 합니다."
+                "--temperature는 "
+                "0.0~2.0 범위여야 합니다."
             )
 
         if args.max_tokens <= 0:
             parser.error(
-                "--max-tokens는 1 이상이어야 합니다."
+                "--max-tokens는 "
+                "1 이상이어야 합니다."
             )
 
         if args.command == "commit":
@@ -188,7 +295,16 @@ def main() -> None:
             run_pr(args)
 
     except GitError as exc:
-        print(f"[ERROR] Git 오류: {exc}")
+        print(
+            f"[ERROR] Git 오류: {exc}"
+        )
 
     except GeminiAPIError as exc:
-        print(f"[ERROR] {exc}")
+        print(
+            f"[ERROR] {exc}"
+        )
+
+    except ValueError as exc:
+        print(
+            f"[ERROR] {exc}"
+        )

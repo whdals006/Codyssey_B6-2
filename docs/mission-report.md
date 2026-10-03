@@ -382,4 +382,52 @@ python3 -c "from app.prompt import build_pr_prompt; print(build_pr_prompt(' M ma
 
     같이 민감한 정보가 그대로 Gemini에 보내지게 될 수 있으므로 Safe Mode를 켜서 마스킹 처리를 한다.
 
-## 9. cli.py 에 옵션 통합
+## 9. cli.py 에 formatter.py 와 security.py를 연결
+
+* Commit 흐름
+
+```
+Gemini
+ ↓
+normalize_commit()
+ ↓
+validate_commit()
+ ↓
+출력
+```
+
+* PR 흐름
+
+```
+Gemini
+ ↓
+normalize_pr()
+ ↓
+validate_pr()
+ ↓
+출력
+```
+
+* Safe Mode 흐름
+
+Safe Mode가 꺼져 있으면:
+
+```
+status
+diff
+ ↓
+Gemini
+```
+
+Safe Mode가 켜져 있으면:
+
+```
+status
+diff
+ ↓
+mask_sensitive_data()
+ ↓
+limit_diff()
+ ↓
+Gemini
+```
